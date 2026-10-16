@@ -2,314 +2,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Bubbles</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 60px 20px;
+            background: #f4f6f9;
+        }
 
-  <title>My Link Hub</title>
+        .container {
+            background: white;
+            max-width: 600px;
+            margin: auto;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: bold;
+        }
 
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f3f6fb;
-      color: #1f2937;
-    }
+        a:hover {
+            text-decoration: underline;
+        }
 
-    header {
-      background: #111827;
-      color: white;
-      text-align: center;
-      padding: 35px 15px;
-    }
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            border-radius: 6px;
+        }
 
-    header h1 {
-      margin: 0 0 10px;
-    }
-
-    header p {
-      color: #cbd5e1;
-      margin: 0;
-    }
-
-    main {
-      width: min(650px, 92%);
-      margin: 30px auto;
-    }
-
-    .panel {
-      background: white;
-      padding: 22px;
-      border-radius: 14px;
-      box-shadow: 0 4px 15px #0000000d;
-      margin-bottom: 25px;
-    }
-
-    input {
-      display: block;
-      width: 100%;
-      padding: 13px;
-      margin: 12px 0;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 16px;
-    }
-
-    button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 12px 17px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
-
-    .link-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: white;
-      padding: 17px;
-      margin: 12px 0;
-      border-radius: 12px;
-      box-shadow: 0 3px 12px #0000000a;
-    }
-
-    .link-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .link-info a {
-      color: #2563eb;
-      font-size: 17px;
-      font-weight: bold;
-      text-decoration: underline;
-      overflow-wrap: anywhere;
-      cursor: pointer;
-    }
-
-    .link-info a:hover {
-      color: #1d4ed8;
-    }
-
-    .link-info p {
-      margin: 7px 0 0;
-      color: #6b7280;
-      font-size: 13px;
-      overflow-wrap: anywhere;
-    }
-
-    .delete {
-      background: #fee2e2;
-      color: #b91c1c;
-      flex-shrink: 0;
-    }
-
-    .delete:hover {
-      background: #fecaca;
-    }
-
-    #empty {
-      text-align: center;
-      color: #6b7280;
-      padding: 20px;
-    }
-
-    footer {
-      text-align: center;
-      color: #6b7280;
-      padding: 25px;
-      font-size: 13px;
-    }
-  </style>
+        .button:hover {
+            background: #1d4ed8;
+            text-decoration: none;
+        }
+    </style>
 </head>
-
 <body>
 
-  <header>
-    <h1>🔖 My Link Hub</h1>
-    <p>Save your favorite links in one place</p>
-  </header>
+    <div class="container">
+        <h1>Stock Market Bubbles</h1>
 
-  <main>
+        <p>
+            Read the document:
+            <a href="https://gamma.app/docs/Stock-Market-Bubbles-Mania-Money-the-Madness-of-Crowds-ubuc6zu1auvdqb3"
+               target="_blank"
+               rel="noopener noreferrer">
+                Stock Market Bubbles: Mania, Money &amp; the Madness of Crowds
+            </a>
+        </p>
 
-    <section class="panel">
-      <h2>Add a New Link</h2>
+        <p>
+            Contact us:
+            <a href="mailto:your-email@example.com">
+                your-email@example.com
+            </a>
+        </p>
 
-      <form id="linkForm">
-        <input
-          type="text"
-          id="linkName"
-          placeholder="Enter link name (e.g. YouTube)"
-          required
-        >
-
-        <input
-          type="text"
-          id="linkUrl"
-          placeholder="Enter URL (e.g. https://youtube.com)"
-          required
-        >
-
-        <button type="submit">+ Save Link</button>
-      </form>
-    </section>
-
-    <section>
-      <h2>My Saved Links</h2>
-      <div id="linksList"></div>
-    </section>
-
-  </main>
-
-  <footer>
-    My Link Hub | Built with HTML, CSS & JavaScript
-  </footer>
-
-  <script>
-    const form = document.getElementById("linkForm");
-    const nameInput = document.getElementById("linkName");
-    const urlInput = document.getElementById("linkUrl");
-    const linksList = document.getElementById("linksList");
-
-    // Load saved links from this browser
-    let links = [];
-
-    try {
-      links = JSON.parse(
-        localStorage.getItem("myLinks") || "[]"
-      );
-
-      if (!Array.isArray(links)) {
-        links = [];
-      }
-    } catch {
-      links = [];
-    }
-
-    // Save links to browser storage
-    function saveLinks() {
-      localStorage.setItem(
-        "myLinks",
-        JSON.stringify(links)
-      );
-    }
-
-    // Display saved links as clickable links
-    function renderLinks() {
-      linksList.replaceChildren();
-
-      if (links.length === 0) {
-        const empty = document.createElement("p");
-        empty.id = "empty";
-        empty.textContent = "No links saved yet. Add your first link!";
-        linksList.appendChild(empty);
-        return;
-      }
-
-      links.forEach((link, index) => {
-        const card = document.createElement("div");
-        card.className = "link-card";
-
-        const info = document.createElement("div");
-        info.className = "link-info";
-
-        // Clickable website name
-        const anchor = document.createElement("a");
-        anchor.href = link.url;
-        anchor.textContent = "🔗 " + link.name;
-        anchor.target = "_blank";
-        anchor.rel = "noopener noreferrer";
-
-        // Display website address
-        const address = document.createElement("p");
-        address.textContent = link.url;
-
-        // Make the address clickable too
-        const addressLink = document.createElement("a");
-        addressLink.href = link.url;
-        addressLink.textContent = link.url;
-        addressLink.target = "_blank";
-        addressLink.rel = "noopener noreferrer";
-        addressLink.style.fontSize = "13px";
-        addressLink.style.fontWeight = "normal";
-
-        address.replaceChildren(addressLink);
-
-        // Delete button
-        const deleteButton = document.createElement("button");
-        deleteButton.className = "delete";
-        deleteButton.textContent = "Delete";
-        deleteButton.type = "button";
-
-        deleteButton.addEventListener("click", () => {
-          links.splice(index, 1);
-          saveLinks();
-          renderLinks();
-        });
-
-        info.append(anchor, address);
-        card.append(info, deleteButton);
-        linksList.appendChild(card);
-      });
-    }
-
-    // Add a new link
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-
-      const name = nameInput.value.trim();
-      let url = urlInput.value.trim();
-
-      if (!name || !url) {
-        alert("Please enter both a name and a URL.");
-        return;
-      }
-
-      // Add https:// if it is missing
-      if (!/^https?:\/\//i.test(url)) {
-        url = "https://" + url;
-      }
-
-      let parsedUrl;
-
-      try {
-        parsedUrl = new URL(url);
-      } catch {
-        alert("Please enter a valid website address.");
-        return;
-      }
-
-      if (
-        !["https:", "http:"].includes(parsedUrl.protocol) ||
-        !parsedUrl.hostname.includes(".")
-      ) {
-        alert("Please enter a valid website URL.");
-        return;
-      }
-
-      links.unshift({
-        name: name,
-        url: parsedUrl.href
-      });
-
-      saveLinks();
-      renderLinks();
-      form.reset();
-    });
-
-    // Show saved links when the page opens
-    renderLinks();
-  </script>
+        <a class="button"
+           href="https://gamma.app/docs/Stock-Market-Bubbles-Mania-Money-the-Madness-of-Crowds-ubuc6zu1auvdqb3"
+           target="_blank"
+           rel="noopener noreferrer">
+            Open Document
+        </a>
+    </div>
 
 </body>
 </html>
