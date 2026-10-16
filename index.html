@@ -4,9 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>My Link Hub</title>
+
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -22,11 +26,17 @@
       padding: 35px 15px;
     }
 
-    header h1 { margin: 0 0 10px; }
-    header p { color: #cbd5e1; margin: 0; }
+    header h1 {
+      margin: 0 0 10px;
+    }
+
+    header p {
+      color: #cbd5e1;
+      margin: 0;
+    }
 
     main {
-      width: min(600px, 92%);
+      width: min(650px, 92%);
       margin: 30px auto;
     }
 
@@ -35,13 +45,13 @@
       padding: 22px;
       border-radius: 14px;
       box-shadow: 0 4px 15px #0000000d;
-      margin-bottom: 24px;
+      margin-bottom: 25px;
     }
 
     input {
       display: block;
       width: 100%;
-      padding: 12px;
+      padding: 13px;
       margin: 12px 0;
       border: 1px solid #d1d5db;
       border-radius: 8px;
@@ -51,39 +61,48 @@
     button {
       background: #2563eb;
       color: white;
-      border: 0;
-      padding: 12px 18px;
+      border: none;
+      padding: 12px 17px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 15px;
+      font-size: 14px;
     }
 
-    button:hover { background: #1d4ed8; }
+    button:hover {
+      background: #1d4ed8;
+    }
 
     .link-card {
       display: flex;
       align-items: center;
       gap: 12px;
       background: white;
-      padding: 16px;
+      padding: 17px;
       margin: 12px 0;
       border-radius: 12px;
       box-shadow: 0 3px 12px #0000000a;
     }
 
-    .link-info { flex: 1; min-width: 0; }
+    .link-info {
+      flex: 1;
+      min-width: 0;
+    }
 
     .link-info a {
       color: #2563eb;
+      font-size: 17px;
       font-weight: bold;
-      text-decoration: none;
+      text-decoration: underline;
       overflow-wrap: anywhere;
+      cursor: pointer;
     }
 
-    .link-info a:hover { text-decoration: underline; }
+    .link-info a:hover {
+      color: #1d4ed8;
+    }
 
     .link-info p {
-      margin: 6px 0 0;
+      margin: 7px 0 0;
       color: #6b7280;
       font-size: 13px;
       overflow-wrap: anywhere;
@@ -92,34 +111,55 @@
     .delete {
       background: #fee2e2;
       color: #b91c1c;
-      padding: 8px 10px;
+      flex-shrink: 0;
     }
 
-    .delete:hover { background: #fecaca; }
+    .delete:hover {
+      background: #fecaca;
+    }
 
-    #empty { color: #6b7280; text-align: center; }
+    #empty {
+      text-align: center;
+      color: #6b7280;
+      padding: 20px;
+    }
 
     footer {
       text-align: center;
       color: #6b7280;
-      padding: 20px;
+      padding: 25px;
       font-size: 13px;
     }
   </style>
 </head>
+
 <body>
+
   <header>
     <h1>🔖 My Link Hub</h1>
-    <p>Save your favorite websites in one place.</p>
+    <p>Save your favorite links in one place</p>
   </header>
 
   <main>
+
     <section class="panel">
-      <h2>Add a new link</h2>
+      <h2>Add a New Link</h2>
+
       <form id="linkForm">
-        <input id="linkName" placeholder="Website name" required>
-        <input id="linkUrl" type="text"
-          placeholder="https://example.com" required>
+        <input
+          type="text"
+          id="linkName"
+          placeholder="Enter link name (e.g. YouTube)"
+          required
+        >
+
+        <input
+          type="text"
+          id="linkUrl"
+          placeholder="Enter URL (e.g. https://youtube.com)"
+          required
+        >
+
         <button type="submit">+ Save Link</button>
       </form>
     </section>
@@ -128,9 +168,12 @@
       <h2>My Saved Links</h2>
       <div id="linksList"></div>
     </section>
+
   </main>
 
-  <footer>My Link Hub · Made with HTML, CSS & JavaScript</footer>
+  <footer>
+    My Link Hub | Built with HTML, CSS & JavaScript
+  </footer>
 
   <script>
     const form = document.getElementById("linkForm");
@@ -138,18 +181,30 @@
     const urlInput = document.getElementById("linkUrl");
     const linksList = document.getElementById("linksList");
 
+    // Load saved links from this browser
     let links = [];
 
     try {
-      links = JSON.parse(localStorage.getItem("myLinks")) || [];
+      links = JSON.parse(
+        localStorage.getItem("myLinks") || "[]"
+      );
+
+      if (!Array.isArray(links)) {
+        links = [];
+      }
     } catch {
       links = [];
     }
 
+    // Save links to browser storage
     function saveLinks() {
-      localStorage.setItem("myLinks", JSON.stringify(links));
+      localStorage.setItem(
+        "myLinks",
+        JSON.stringify(links)
+      );
     }
 
+    // Display saved links as clickable links
     function renderLinks() {
       linksList.replaceChildren();
 
@@ -168,62 +223,93 @@
         const info = document.createElement("div");
         info.className = "link-info";
 
+        // Clickable website name
         const anchor = document.createElement("a");
         anchor.href = link.url;
+        anchor.textContent = "🔗 " + link.name;
         anchor.target = "_blank";
         anchor.rel = "noopener noreferrer";
-        anchor.textContent = link.name;
 
+        // Display website address
         const address = document.createElement("p");
         address.textContent = link.url;
 
-        const remove = document.createElement("button");
-        remove.className = "delete";
-        remove.textContent = "Delete";
-        remove.type = "button";
-        remove.addEventListener("click", () => {
+        // Make the address clickable too
+        const addressLink = document.createElement("a");
+        addressLink.href = link.url;
+        addressLink.textContent = link.url;
+        addressLink.target = "_blank";
+        addressLink.rel = "noopener noreferrer";
+        addressLink.style.fontSize = "13px";
+        addressLink.style.fontWeight = "normal";
+
+        address.replaceChildren(addressLink);
+
+        // Delete button
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete";
+        deleteButton.textContent = "Delete";
+        deleteButton.type = "button";
+
+        deleteButton.addEventListener("click", () => {
           links.splice(index, 1);
           saveLinks();
           renderLinks();
         });
 
         info.append(anchor, address);
-        card.append(info, remove);
+        card.append(info, deleteButton);
         linksList.appendChild(card);
       });
     }
 
+    // Add a new link
     form.addEventListener("submit", (event) => {
       event.preventDefault();
 
       const name = nameInput.value.trim();
-      let rawUrl = urlInput.value.trim();
+      let url = urlInput.value.trim();
 
-      if (!/^https?:\/\//i.test(rawUrl)) {
-        rawUrl = "https://" + rawUrl;
+      if (!name || !url) {
+        alert("Please enter both a name and a URL.");
+        return;
+      }
+
+      // Add https:// if it is missing
+      if (!/^https?:\/\//i.test(url)) {
+        url = "https://" + url;
       }
 
       let parsedUrl;
 
       try {
-        parsedUrl = new URL(rawUrl);
+        parsedUrl = new URL(url);
       } catch {
+        alert("Please enter a valid website address.");
+        return;
+      }
+
+      if (
+        !["https:", "http:"].includes(parsedUrl.protocol) ||
+        !parsedUrl.hostname.includes(".")
+      ) {
         alert("Please enter a valid website URL.");
         return;
       }
 
-      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-        alert("Please enter an HTTP or HTTPS website URL.");
-        return;
-      }
+      links.unshift({
+        name: name,
+        url: parsedUrl.href
+      });
 
-      links.unshift({ name, url: parsedUrl.href });
       saveLinks();
       renderLinks();
       form.reset();
     });
 
+    // Show saved links when the page opens
     renderLinks();
   </script>
+
 </body>
 </html>
