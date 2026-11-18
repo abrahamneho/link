@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File Drop</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --bg: #eef2f7; --surface: #ffffff; --ink: #14213d; --muted: #5d6b82;
+    --line: #d5dde8; --accent: #1f5eff; --accent-ink: #ffffff; --accent-soft: #e6edff;
+    --ok: #14804a; --err: #b42318; --err-soft: #fdeceb; --shadow: 0 1px 3px rgba(20,33,61,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1623; --surface: #172033; --ink: #e8eefb; --muted: #93a1ba;
+      --line: #2a3650; --accent: #5b8aff; --accent-ink: #0b1020; --accent-soft: #1d2b4d;
+      --ok: #4cc38a; --err: #ff8a80; --err-soft: #3a1f26; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.45; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 72px; }
+  header { margin-bottom: 20px; }
+  h1 { font-size: 1.8rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .sub { margin: 0; color: var(--muted); }
+
+  button, .btn { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    padding: 8px 14px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; line-height: 1.2; }
+  button:hover, .btn:hover { border-color: var(--accent); }
+  button:focus-visible, a:focus-visible, input:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  .danger { color: var(--err); }
+  .danger:hover { border-color: var(--err); background: var(--err-soft); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+
+  .warn { background: var(--err-soft); border: 1px solid var(--err); color: var(--err); border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+  .tab { border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; padding: 10px 16px; color: var(--muted); font-weight: 600; }
+  .tab:hover { border-color: transparent; color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .count { background: var(--accent-soft); color: var(--accent); border-radius: 999px; font-size: .75rem; padding: 1px 8px; margin-left: 6px; }
+
+  .drop { position: relative; display: block; border: 2px dashed var(--line); background: var(--surface); border-radius: 14px;
+    padding: 34px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
+  .drop strong { display: block; font-size: 1.1rem; margin-bottom: 4px; }
+  .drop span { color: var(--muted); font-size: .9rem; }
+  .drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .status { min-height: 1.4em; margin: 10px 0 0; font-size: .92rem; color: var(--muted); }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+  .toolbar { display: flex; gap: 8px; margin: 24px 0 12px; }
+  .toolbar input, .linkform input { flex: 1 1 200px; font: inherit; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); min-width: 0; }
+  .linkform { display: flex; flex-wrap: wrap; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; box-shadow: var(--shadow); }
+  .linkform .primary { flex: 0 0 auto; }
+
+  ul.items { list-style: none; margin: 0; padding: 0; }
+  .items li { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow); }
+  .badge { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: .7rem; font-weight: 700; display: grid; place-items: center; text-transform: uppercase; overflow: hidden; }
+  .info { flex: 1; min-width: 0; }
+  .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink); text-decoration: none; }
+  a.name:hover { color: var(--accent); text-decoration: underline; }
+  .meta { color: var(--muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .empty { color: var(--muted); text-align: center; padding: 28px 0; }
+  @media (max-width: 560px) {
+    .items li { flex-wrap: wrap; }
+    .actions { width: 100%; }
+    .actions > * { flex: 1; }
+  }
+
+  /* confirm dialog */
+  dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 22px; width: min(92vw, 400px); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+  dialog::backdrop { background: rgba(10,15,28,.55); }
+  dialog h3 { margin: 0 0 8px; font-size: 1.15rem; }
+  dialog p { margin: 0 0 18px; color: var(--muted); word-break: break-word; }
+  dialog .row { display: flex; justify-content: flex-end; gap: 8px; }
+  .btn-danger { background: var(--err); border-color: var(--err); color: #fff; font-weight: 600; }
+
+  /* viewer */
+  #present { display: none; position: fixed; inset: 0; z-index: 100; background: #000; flex-direction: column; }
+  #present.open { display: flex; }
+  #stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; user-select: none; }
+  #slide, #pptHost, #content { display: none; }
+  #slide { background: #fff; }
+  #present[data-view="pdf"] #slide { display: block; }
+  #present[data-view="pptx"] #pptHost { display: block; }
+  #present[data-view="content"] #content.center { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+  #present[data-view="content"] #content.scroll { display: block; width: 100%; height: 100%; overflow: auto; }
+  #loading { position: absolute; color: #cfd8e8; padding: 0 20px; text-align: center; }
+  #content { color: #e8eefb; text-align: center; }
+  #content img, #content video { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #content audio { width: min(92%, 480px); }
+  #content iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+  #content .msg { max-width: 420px; padding: 24px; }
+  #content .msg h3 { margin: 0 0 8px; font-size: 1.1rem; }
+  #content .msg p { margin: 0; color: #aab6cc; word-break: break-word; }
+  #content .msg a { display: inline-block; margin: 16px 4px 0; background: #5b8aff; color: #0b1020; padding: 9px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  #content .msg a.alt { background: transparent; color: #e8eefb; border: 1px solid #5d6b82; }
+  #content pre { margin: 0 auto; max-width: 960px; padding: 56px 20px 40px; text-align: left; white-space: pre-wrap; word-break: break-word; font: 14px/1.55 ui-monospace, Menlo, Consolas, monospace; }
+  .sheets { display: flex; flex-direction: column; height: 100%; background: #fff; color: #14213d; text-align: left; }
+  .sheet-tabs { display: flex; gap: 4px; padding: 8px 130px 0 8px; background: #e3e8f0; overflow-x: auto; flex: 0 0 auto; min-height: 44px; align-items: flex-end; }
+  .sheet-tabs button { border: 1px solid #c6cfdd; border-bottom: 0; border-radius: 8px 8px 0 0; background: #f4f6fa; color: #14213d; padding: 6px 14px; white-space: nowrap; }
+  .sheet-tabs button.on { background: #fff; font-weight: 600; }
+  .sheet-body { flex: 1; overflow: auto; }
+  .sheet-body table { border-collapse: collapse; font-size: .85rem; }
+  .sheet-body td { border: 1px solid #d5dde8; padding: 4px 9px; white-space: nowrap; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+  .sheet-body .note { padding: 10px 12px; color: #5d6b82; font-size: .85rem; }
+  #pbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+    background: rgba(20,20,20,.8); color: #fff; border-radius: 999px; padding: 4px 8px; transition: opacity .3s; z-index: 5; }
+  #pbar.hide { opacity: 0; }
+  #pbar button { background: transparent; border: 0; color: #fff; font-size: 1.4rem; line-height: 1; padding: 6px 14px; border-radius: 999px; }
+  #pbar button:hover { background: rgba(255,255,255,.15); }
+  #pbar #pclose { font-size: .95rem; border-left: 1px solid rgba(255,255,255,.25); border-radius: 0 999px 999px 0; }
+  #pcount { min-width: 64px; text-align: center; font-size: .9rem; font-variant-numeric: tabular-nums; }
+  #present:not(.paged) #pbar { top: 12px; bottom: auto; left: auto; right: 12px; transform: none; }
+  #present:not(.paged) #pprev, #present:not(.paged) #pnext, #present:not(.paged) #pcount { display: none; }
+  #present:not(.paged) #pclose { border-left: 0; border-radius: 999px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>File Drop</h1>
+    <p class="sub">Upload a file or save a link here, then open it from any device.</p>
+  </header>
+
+  <div class="warn" id="warn" hidden>Add your Supabase URL and publishable key in the script section of index.html.</div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabFiles" aria-selected="true" aria-controls="panelFiles" type="button">Files<span class="count" id="fileCount">0</span></button>
+    <button class="tab" role="tab" id="tabLinks" aria-selected="false" aria-controls="panelLinks" type="button">Links<span class="count" id="linkCount">0</span></button>
+  </div>
+
+  <!-- Files -->
+  <section id="panelFiles" role="tabpanel" aria-labelledby="tabFiles">
+    <label class="drop" id="drop">
+      <strong>Choose files to upload</strong>
+      <span>PPT, PDF, Word, Excel, images, ZIP, or drag them here.</span>
+      <input type="file" id="file" multiple>
+    </label>
+    <div class="bar" id="bar"><i id="barfill"></i></div>
+    <p class="status" id="status" role="status"></p>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search files" aria-label="Search files">
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+    <ul class="items" id="list"></ul>
+  </section>
+
+  <!-- Links -->
+  <section id="panelLinks" role="tabpanel" aria-labelledby="tabLinks" hidden>
+    <div class="linkform">
+      <input type="text" id="linkTitle" placeholder="Title (optional)" aria-label="Link title" maxlength="200">
+      <input type="url" id="linkUrl" placeholder="https://example.com" aria-label="Link address">
+      <button type="button" class="primary" id="addLink">Save link</button>
+    </div>
+    <p class="status" id="linkStatus" role="status"></p>
+    <ul class="items" id="links"></ul>
+  </section>
+</main>
+
+<dialog id="confirm" aria-labelledby="confirmTitle">
+  <h3 id="confirmTitle">Delete?</h3>
+  <p id="confirmText"></p>
+  <div class="row">
+    <button type="button" id="confirmNo">Cancel</button>
+    <button type="button" class="btn-danger" id="confirmYes">Yes, delete</button>
+  </div>
+</dialog>
+
+<div id="present" role="dialog" aria-label="File viewer">
+  <div id="stage">
+    <canvas id="slide"></canvas>
+    <div id="pptHost"></div>
+    <div id="content" class="center"></div>
+    <div id="loading">Loading...</div>
+  </div>
+  <div id="pbar">
+    <button type="button" id="pprev" aria-label="Previous slide">&#8249;</button>
+    <span id="pcount"></span>
+    <button type="button" id="pnext" aria-label="Next slide">&#8250;</button>
+    <button type="button" id="pclose">Close</button>
+  </div>
+</div>
+
+<script>
+  // ====== SUPABASE DETAILS ======
+  const SUPABASE_URL = "https://hvcjbkbubiyndulxtlmm.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_mdtXbVaC5qvNPqdazlkU2A_D3QXRl6-";
+  const BUCKET = "files";
+  // ==============================
+
+  const $ = id => document.getElementById(id);
+  const configured = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-");
+  if (!configured) $("warn").hidden = false;
+  const db = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  function setMsg(el, msg, type = "") { el.textContent = msg; el.className = "status " + type; }
+  const statusEl = $("status"), linkStatus = $("linkStatus");
+  const setStatus = (m, t) => setMsg(statusEl, m, t);
+  const setLinkStatus = (m, t) => setMsg(linkStatus, m, t);
+
+  function fmtSize(b) {
+    if (!b && b !== 0) return "";
+    const u = ["B", "KB", "MB", "GB"]; let i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return b.toFixed(i ? 1 : 0) + " " + u[i];
+  }
+  const fmtDate = d => d ? new Date(d).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+  const displayName = n => n.replace(/^\d{10,}_/, "");
+  const safeName = n => n.replace(/[^\w.\-]+/g, "_");
+
+  // ---------- Tabs ----------
+  function selectTab(which) {
+    const files = which === "files";
+    $("tabFiles").setAttribute("aria-selected", files);
+    $("tabLinks").setAttribute("aria-selected", !files);
+    $("panelFiles").hidden = !files;
+    $("panelLinks").hidden = files;
+  }
+  $("tabFiles").onclick = () => selectTab("files");
+  $("tabLinks").onclick = () => selectTab("links");
+
+  // ---------- Delete confirmation ----------
+  const dlg = $("confirm");
+  function confirmDelete(what) {
+    return new Promise(resolve => {
+      $("confirmTitle").textContent = "Are you sure?";
+      $("confirmText").textContent = 'Do you really want to delete "' + what + '"? This cannot be undone.';
+      let result = false;
+      const done = v => { result = v; dlg.close(); };
+      $("confirmYes").onclick = () => done(true);
+      $("confirmNo").onclick = () => done(false);
+      dlg.onclose = () => resolve(result);   // also fires on Esc
+      dlg.showModal();
+      $("confirmNo").focus();
+    });
+  }
+
+  // ---------- Files ----------
+  let allFiles = [];
+
+  function renderFiles() {
+    const listEl = $("list");
+    const q = $("search").value.trim().toLowerCase();
+    const shown = allFiles.filter(f => displayName(f.name).toLowerCase().includes(q));
+    listEl.replaceChildren();
+    if (!shown.length) {
+      const d = document.createElement("div"); d.className = "empty";
+      d.textContent = allFiles.length ? "No files match your search." : "No files yet. Upload one above.";
+      listEl.appendChild(d); return;
+    }
+    for (const f of shown) {
+      const name = displayName(f.name);
+      const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+      const plainUrl = db.storage.from(BUCKET).getPublicUrl(f.name).data.publicUrl;
+      const dlUrl = db.storage.from(BUCKET).getPublicUrl(f.name, { download: name }).data.publicUrl;
+
+      const li = document.createElement("li");
+      li.innerHTML =
+        '<div class="badge"></div>' +
+        '<div class="info"><span class="name"></span><div class="meta"></div></div>' +
+        '<div class="actions"><button type="button" class="view">View</button>' +
+        '<a class="btn primary dl" download>Download</a>' +
+        '<button type="button" class="danger del">Delete</button></div>';
+      li.querySelector(".badge").textContent = ext.slice(0, 4) || "file";
+      li.querySelector(".name").textContent = name;
+      li.querySelector(".name").title = name;
+      li.querySelector(".meta").textContent = [fmtSize(f.metadata && f.metadata.size), fmtDate(f.created_at)].filter(Boolean).join(" · ");
+      li.querySelector(".dl").href = dlUrl;
+      li.querySelector(".view").onclick = () => openPresenter(name, plainUrl, ext, dlUrl);
+      li.querySelector(".del").onclick = async () => {
+        if (!(await confirmDelete(name))) return;
+        const { error } = await db.storage.from(BUCKET).remove([f.name]);
+        if (error) setStatus("Delete failed: " + error.message, "err");
+        else { setStatus("Deleted " + name, "ok"); loadFiles(); }
+      };
+      listEl.appendChild(li);
+    }
+  }
+
+  async function loadFiles() {
+    if (!db) return;
+    const { data, error } = await db.storage.from(BUCKET).list("", { limit: 500, sortBy: { column: "created_at", order: "desc" } });
+    if (error) { setStatus("Could not load files: " + error.message, "err"); return; }
+    allFiles = (data || []).filter(f => f.name !== ".emptyFolderPlaceholder" && f.id);
+    $("fileCount").textContent = allFiles.length;
+    renderFiles();
+  }
+
+  async function uploadFiles(fileList) {
+    if (!db) { setStatus("Supabase is not configured yet.", "err"); return; }
+    const files = Array.from(fileList);
+    if (!files.length) return;
+    $("bar").style.display = "block";
+    let done = 0, failed = 0, lastError = "";
+    for (const file of files) {
+      setStatus("Uploading " + file.name + " (" + (done + 1) + " of " + files.length + ")...");
+      $("barfill").style.width = (done / files.length * 100) + "%";
+      const path = Date.now() + "_" + safeName(file.name);
+      const { error } = await db.storage.from(BUCKET).upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type || undefined });
+      if (error) { failed++; lastError = file.name + ": " + error.message; }
+      done++;
+    }
+    $("barfill").style.width = "100%";
+    setTimeout(() => { $("bar").style.display = "none"; $("barfill").style.width = "0"; }, 600);
+    if (!failed) setStatus(done + (done === 1 ? " file uploaded." : " files uploaded."), "ok");
+    else setStatus((done - failed) + " uploaded, " + failed + " failed. " + lastError, "err");
+    $("file").value = "";
+    loadFiles();
+  }
+
+  $("file").addEventListener("change", e => uploadFiles(e.target.files));
+  $("refresh").addEventListener("click", loadFiles);
+  $("search").addEventListener("input", renderFiles);
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => uploadFiles(e.dataTransfer.files));
+
+  // ---------- Links ----------
+  async function loadLinks() {
+    if (!db) return;
+    const linksEl = $("links");
+    const { data, error } = await db.from("links").select("*").order("created_at", { ascending: false });
+    linksEl.replaceChildren();
+    if (error) { setLinkStatus("Could not load links: " + error.message, "err"); return; }
+    $("linkCount").textContent = data.length;
+    if (!data.length) {
+      const d = document.createElement("div"); d.className = "empty"; d.textContent = "No links yet. Save one above.";
+      linksEl.appendChild(d); return;
+    }
+    for (const l of data) {
+      const li = document.createElement("li");
+      li.innerHTML =
+        '<div class="badge">link</div>' +
+        '<div class="info"><a class="name" target="_blank" rel="noopener noreferrer"></a><div class="meta"></div></div>' +
+        '<div class="actions"><a class="btn primary open" target="_blank" rel="noopener noreferrer">Open</a>' +
+        '<button type="button" class="danger del">Delete</button></div>';
+      const a = li.querySelector("a.name");
+      a.textContent = l.title || l.url; a.href = l.url;
+      li.querySelector(".meta").textContent = (l.title ? l.url + " · " : "") + fmtDate(l.created_at);
+      li.querySelector(".open").href = l.url;
+      li.querySelector(".del").onclick = async () => {
+        if (!(await confirmDelete(l.title || l.url))) return;
+        const { error: e } = await db.from("links").delete().eq("id", l.id);
+        if (e) setLinkStatus("Delete failed: " + e.message, "err");
+        else { setLinkStatus("Link deleted.", "ok"); loadLinks(); }
+      };
+      linksEl.appendChild(li);
+    }
+  }
+
+  async function addLink() {
+    if (!db) { setLinkStatus("Supabase is not configured yet.", "err"); return; }
+    let url = $("linkUrl").value.trim();
+    const title = $("linkTitle").value.trim();
+    if (!url) { setLinkStatus("Enter a link address first.", "err"); return; }
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    try { new URL(url); } catch { setLinkStatus("That doesn't look like a valid link.", "err"); return; }
+    $("addLink").disabled = true;
+    const { error } = await db.from("links").insert({ url, title: title || null });
+    $("addLink").disabled = false;
+    if (error) { setLinkStatus("Could not save: " + error.message, "err"); return; }
+    $("linkUrl").value = ""; $("linkTitle").value = "";
+    setLinkStatus("Link saved.", "ok");
+    loadLinks();
+  }
+  $("addLink").addEventListener("click", addLink);
+  ["linkUrl", "linkTitle"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") addLink(); }));
+
+  // ---------- Full screen viewer ----------
+  const EXT = {
+    pdf:    ["pdf"],
+    pptx:   ["pptx", "ppsx"],
+    docx:   ["docx"],
+    sheet:  ["xlsx", "xlsm", "xlsb", "xls", "ods", "csv", "tsv"],
+    image:  ["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif", "ico", "svg"],
+    video:  ["mp4", "webm", "ogv", "mov", "m4v"],
+    audio:  ["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus"],
+    text:   ["txt", "md", "json", "xml", "yml", "yaml", "log", "ini", "cfg", "conf", "js", "mjs", "ts", "jsx", "tsx", "css", "html", "htm",
+             "py", "java", "c", "h", "cpp", "cs", "go", "rs", "rb", "php", "sh", "sql", "swift", "kt", "r", "tex", "srt", "vtt", "env"],
+    office: ["ppt", "pps", "pot", "potx", "pptm", "doc", "dot", "dotx", "docm", "rtf", "odt", "odp"]
+  };
+  const OFFICE_FALLBACK = ["pptx", "ppsx", "docx", "xlsx", "xls", "xlsm"];
+  const LIBS = {
+    pdf:   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/",
+    pptx:  "https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js",
+    jszip: "https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js",
+    docx:  "https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js",
+    xlsx:  "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+  };
+  const pres = $("present"), stage = $("stage"), canvas = $("slide"), pptHost = $("pptHost"), content = $("content"),
+        loading = $("loading"), pbar = $("pbar"), pcount = $("pcount");
+  let isOpen = false, session = 0, view = null, curPage = 1, total = 0, hideTimer = null;
+  let pdfDoc = null, rendering = false, pendingPage = null;
+  let pptxPrev = null, pptxBuf = null, pptxRatio = 4 / 3, pptxFitting = false;
+
+  const scriptCache = {};
+  function loadScript(src) {
+    if (!scriptCache[src]) {
+      scriptCache[src] = new Promise((resolve, reject) => {
+        const sc = document.createElement("script");
+        sc.src = src; sc.onload = resolve;
+        sc.onerror = () => { delete scriptCache[src]; reject(new Error("Could not load the viewer component. Check your internet connection.")); };
+        document.head.appendChild(sc);
+      });
+    }
+    return scriptCache[src];
+  }
+  async function loadPdfLib() {
+    await loadScript(LIBS.pdf + "pdf.min.js");
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc && pdfjsLib.GlobalWorkerOptions.workerSrc.startsWith("blob:")) return;
+    const code = await (await fetch(LIBS.pdf + "pdf.worker.min.js")).text();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+  }
+  async function fetchBuffer(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not download the file (error " + res.status + ").");
+    return res.arrayBuffer();
+  }
+
+  function setView(v) {
+    view = v;
+    pres.dataset.view = v || "";
+    pres.classList.toggle("paged", v === "pdf" || v === "pptx");
+    if (v) loading.style.display = "none";
+  }
+  function setContent(node, mode) {
+    content.className = mode;
+    content.replaceChildren(node);
+    content.scrollTop = 0;
+    setView("content");
+  }
+  function showMessage(title, text, dlUrl, openUrl) {
+    const box = document.createElement("div"); box.className = "msg";
+    const h = document.createElement("h3"); h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    box.append(h, p);
+    if (openUrl) { const o = document.createElement("a"); o.href = openUrl; o.target = "_blank"; o.rel = "noopener"; o.textContent = "Open in new tab"; box.appendChild(o); }
+    if (dlUrl) { const a = document.createElement("a"); a.href = dlUrl; a.download = ""; a.className = openUrl ? "alt" : ""; a.textContent = "Download file"; box.appendChild(a); }
+    total = 0; setContent(box, "center");
+  }
+
+  function pageLabel() { pcount.textContent = curPage + " / " + total; }
+  async function renderPage(n) {
+    if (rendering) { pendingPage = n; return; }
+    rendering = true;
+    try {
+      const pg = await pdfDoc.getPage(n);
+      const area = stage.getBoundingClientRect();
+      const base = pg.getViewport({ scale: 1 });
+      const fit = Math.min(area.width / base.width, area.height / base.height);
+      const dpr = window.devicePixelRatio || 1;
+      const vp = pg.getViewport({ scale: fit * dpr });
+      canvas.width = vp.width; canvas.height = vp.height;
+      canvas.style.width = (vp.width / dpr) + "px";
+      canvas.style.height = (vp.height / dpr) + "px";
+      await pg.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+      pageLabel();
+    } catch (e) { /* page changed or viewer closed while rendering */ }
+    rendering = false;
+    if (pendingPage !== null) { const q = pendingPage; pendingPage = null; if (pdfDoc) renderPage(q); }
+  }
+  function showPage() {
+    if (view === "pdf" && pdfDoc) renderPage(curPage);
+    else if (view === "pptx" && pptxPrev) { pptxPrev.renderSingleSlide(curPage - 1); pageLabel(); }
+  }
+  function goTo(n) {
+    if (!total) return;
+    n = Math.min(total, Math.max(1, n));
+    if (n !== curPage) { curPage = n; showPage(); }
+  }
+  const go = d => goTo(curPage + d);
+
+  async function fitPptx() {
+    if (pptxFitting || !pptxPrev) return;
+    pptxFitting = true;
+    try {
+      const area = stage.getBoundingClientRect();
+      const w = Math.max(200, Math.floor(Math.min(area.width, area.height * pptxRatio)));
+      const h = Math.floor(w / pptxRatio);
+      pptxPrev.options.width = w; pptxPrev.options.height = h;
+      pptxPrev.wrapper.style.width = w + "px";
+      pptxPrev.wrapper.style.height = h + "px";
+      pptxPrev.wrapper.style.overflow = "hidden";
+      await pptxPrev.load(pptxBuf);
+      pptxPrev.renderSingleSlide(curPage - 1);
+    } finally { pptxFitting = false; }
+  }
+
+  async function openPdf(url, sid) {
+    await loadPdfLib();
+    const doc = await pdfjsLib.getDocument(url).promise;
+    if (sid !== session) { doc.destroy(); return; }
+    pdfDoc = doc; total = doc.numPages; curPage = 1;
+    setView("pdf");
+    await renderPage(1);
+  }
+  async function openPptx(url, sid) {
+    await loadScript(LIBS.pptx);
+    const buf = await fetchBuffer(url);
+    if (sid !== session) return;
+    pptxBuf = buf;
+    pptHost.innerHTML = "";
+    pptxPrev = pptxPreview.init(pptHost, { width: 800, height: 450, mode: "slide" });
+    const info = await pptxPrev.load(buf);
+    if (sid !== session) return;
+    pptxRatio = info.width / info.height || 4 / 3;
+    total = pptxPrev.slideCount; curPage = 1;
+    if (!total) throw new Error("This presentation has no slides.");
+    setView("pptx");
+    await fitPptx();
+    pageLabel();
+  }
+  async function openDocx(url, sid) {
+    await loadScript(LIBS.jszip); await loadScript(LIBS.docx);
+    const buf = await fetchBuffer(url);
+    if (sid !== session) return;
+    const box = document.createElement("div");
+    setContent(box, "scroll");
+    await docx.renderAsync(buf, box, box, { inWrapper: true, ignoreLastRenderedPageBreak: false });
+    const wrap = box.querySelector(".docx-wrapper"), page = box.querySelector("section.docx");
+    if (wrap && page) {
+      const z = Math.min(1, (content.clientWidth - 8) / (page.offsetWidth + 60));
+      if (z < 1) wrap.style.zoom = z;
+    }
+  }
+  function buildTable(ws) {
+    const MAX = 2000, rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" });
+    const out = document.createElement("div");
+    if (!rows.length) { out.innerHTML = '<div class="note">This sheet is empty.</div>'; return out; }
+    const t = document.createElement("table");
+    rows.slice(0, MAX).forEach(r => {
+      const tr = document.createElement("tr");
+      r.forEach(c => { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); });
+      t.appendChild(tr);
+    });
+    out.appendChild(t);
+    if (rows.length > MAX) {
+      const n = document.createElement("div"); n.className = "note";
+      n.textContent = "Showing the first " + MAX + " of " + rows.length + " rows. Download the file to see everything.";
+      out.appendChild(n);
+    }
+    return out;
+  }
+  async function openSheet(url, ext, sid) {
+    await loadScript(LIBS.xlsx);
+    let wb;
+    if (ext === "csv" || ext === "tsv") {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Could not download the file (error " + res.status + ").");
+      wb = XLSX.read(await res.text(), { type: "string" });
+    } else {
+      wb = XLSX.read(await fetchBuffer(url), { type: "array" });
+    }
+    if (sid !== session) return;
+    const wrap = document.createElement("div"); wrap.className = "sheets";
+    const tabs = document.createElement("div"); tabs.className = "sheet-tabs";
+    const body = document.createElement("div"); body.className = "sheet-body";
+    wrap.append(tabs, body);
+    const show = i => {
+      [...tabs.children].forEach((b, j) => b.classList.toggle("on", i === j));
+      body.replaceChildren(buildTable(wb.Sheets[wb.SheetNames[i]]));
+      body.scrollTop = 0;
+    };
+    wb.SheetNames.forEach((n, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.onclick = () => show(i); tabs.appendChild(b);
+    });
+    setContent(wrap, "scroll");
+    show(0);
+  }
+  async function openText(url, sid) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not download the file (error " + res.status + ").");
+    let txt = await res.text();
+    if (sid !== session) return;
+    const LIMIT = 1000000;
+    if (txt.length > LIMIT) txt = txt.slice(0, LIMIT) + "\n\n... file continues. Download it to see everything.";
+    const pre = document.createElement("pre"); pre.textContent = txt;
+    setContent(pre, "scroll");
+  }
+  function openOffice(url) {
+    const f = document.createElement("iframe");
+    f.title = "Preview"; f.allowFullscreen = true;
+    f.src = "https://view.officeapps.live.com/op/embed.aspx?src=" + encodeURIComponent(url);
+    total = 0;
+    setContent(f, "center");
+  }
+  function openMedia(tag, url, dlUrl) {
+    const el = document.createElement(tag);
+    el.src = url;
+    if (tag === "img") el.alt = "";
+    else { el.controls = true; el.autoplay = true; el.playsInline = true; }
+    el.onerror = () => showMessage("This file can't be shown here", "Your browser doesn't support this format.", dlUrl);
+    setContent(el, "center");
+  }
+
+  async function openPresenter(name, url, ext, dlUrl) {
+    const sid = ++session;
+    resetViewer();
+    isOpen = true;
+    pres.classList.add("open");
+    document.body.style.overflow = "hidden";
+    setView(null);
+    loading.style.display = "block"; loading.textContent = "Loading " + name + "...";
+    pcount.textContent = "";
+    showBar();
+    const req = pres.requestFullscreen || pres.webkitRequestFullscreen;
+    if (req) { try { await req.call(pres); } catch (e) {} }
+    if (sid !== session) return;
+    try {
+      if (EXT.pdf.includes(ext)) await openPdf(url, sid);
+      else if (EXT.pptx.includes(ext)) await openPptx(url, sid);
+      else if (EXT.docx.includes(ext)) await openDocx(url, sid);
+      else if (EXT.sheet.includes(ext)) await openSheet(url, ext, sid);
+      else if (EXT.image.includes(ext)) openMedia("img", url, dlUrl);
+      else if (EXT.video.includes(ext)) openMedia("video", url, dlUrl);
+      else if (EXT.audio.includes(ext)) openMedia("audio", url, dlUrl);
+      else if (EXT.text.includes(ext)) await openText(url, sid);
+      else if (EXT.office.includes(ext)) openOffice(url);
+      else showMessage("No preview for ." + ext + " files", "This file type can't be shown in the browser, but you can open it in a new tab or download it.", dlUrl, url);
+    } catch (e) {
+      console.error("Viewer error:", e);
+      if (sid === session && OFFICE_FALLBACK.includes(ext)) { openOffice(url); return; }
+      if (sid === session) showMessage("Could not show " + name,
+        (e && e.message ? e.message : "Something went wrong.") + " Make sure you are online and the Supabase bucket is public.", dlUrl, url);
+    }
+  }
+
+  function resetViewer() {
+    content.querySelectorAll("video,audio").forEach(m => { m.pause(); m.removeAttribute("src"); m.load(); });
+    content.replaceChildren();
+    pptHost.innerHTML = "";
+    if (pdfDoc) { try { pdfDoc.destroy(); } catch (e) {} }
+    pdfDoc = null; pptxPrev = null; pptxBuf = null; pendingPage = null; total = 0; curPage = 1; view = null;
+  }
+  function closePresenter() {
+    if (!isOpen) return;
+    isOpen = false; session++;
+    pres.classList.remove("open", "paged");
+    document.body.style.overflow = "";
+    clearTimeout(hideTimer);
+    resetViewer();
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+  function showBar() {
+    pbar.classList.remove("hide");
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => pbar.classList.add("hide"), 2800);
+  }
+
+  $("pnext").onclick = e => { e.stopPropagation(); go(1); };
+  $("pprev").onclick = e => { e.stopPropagation(); go(-1); };
+  $("pclose").onclick = closePresenter;
+  ["fullscreenchange", "webkitfullscreenchange"].forEach(ev =>
+    document.addEventListener(ev, () => { if (isOpen && !document.fullscreenElement && !document.webkitFullscreenElement) closePresenter(); }));
+
+  stage.addEventListener("click", e => {
+    if (!total) return;
+    const r = stage.getBoundingClientRect();
+    go(e.clientX - r.left > r.width / 2 ? 1 : -1);
+  });
+  let touchX = null;
+  stage.addEventListener("touchstart", e => { touchX = e.touches[0].clientX; showBar(); }, { passive: true });
+  stage.addEventListener("touchend", e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX; touchX = null;
+    if (total && Math.abs(dx) > 50) { go(dx < 0 ? 1 : -1); e.preventDefault(); }
+  });
+  pres.addEventListener("mousemove", showBar);
+
+  document.addEventListener("keydown", e => {
+    if (!isOpen || dlg.open) return;
+    showBar();
+    if (e.key === "Escape") { closePresenter(); return; }
+    if (!total) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); go(1); }
+    else if (["ArrowLeft", "ArrowUp", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); go(-1); }
+    else if (e.key === "Home") { e.preventDefault(); goTo(1); }
+    else if (e.key === "End") { e.preventDefault(); goTo(total); }
+  });
+  let resizeT;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => {
+      if (!isOpen) return;
+      if (view === "pdf" && pdfDoc) renderPage(curPage);
+      else if (view === "pptx") fitPptx();
+    }, 200);
+  });
+
+  loadFiles();
+  loadLinks();
+</script>
+</body>
+</html>
